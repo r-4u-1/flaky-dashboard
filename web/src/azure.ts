@@ -1,11 +1,6 @@
-import { AppConfig, PAT, WORKFLOW } from "./config.js";
-import {
-  FlakySnapshot,
-  FlakyTest,
-  SnapshotSummary,
-} from "./types.js";
+import { AppConfig } from "./config";
+import { FlakySnapshot, FlakyTest, SnapshotSummary } from "./types";
 
-/** YYYY-MM-DD -> integer 20260131 (DateSK) */
 function toDateSK(date: string): number {
   return Number(date.replace(/-/g, ""));
 }
@@ -15,28 +10,18 @@ function pct(numerator: number, denominator: number): number {
   return Math.round((numerator / denominator) * 1000) / 10;
 }
 
-function testPassRate(t: {
-  total: number;
-  passed: number;
-  notImpacted: number;
-  notExecuted: number;
-}): number {
+function testPassRate(t: { total: number; passed: number; notImpacted: number; notExecuted: number }): number {
   const executed = t.total - t.notExecuted;
   if (executed <= 0) return 0;
   return pct(t.passed + t.notImpacted, executed);
 }
 
-/**
- * Build the Analytics OData URL for a single day's TestResultsDaily,
- * grouped per test, for the given pipeline + workflow.
- * Field names follow Microsoft's flaky-test sample report.
- */
-export function buildODataUrl(app: AppConfig, date: string): string {
+export function buildODataUrl(app: AppConfig, date: string, workflow: string): string {
   const dateSK = toDateSK(date);
   const filter =
     `Pipeline/PipelineName eq '${app.pipeline.replace(/'/g, "''")}' ` +
     `and DateSK eq ${dateSK} ` +
-    `and Workflow eq '${WORKFLOW}'`;
+    `and Workflow eq '${workflow}'`;
 
   const apply =
     `filter(${filter})` +
@@ -49,16 +34,14 @@ export function buildODataUrl(app: AppConfig, date: string): string {
     `ResultNotImpactedCount with sum as NotImpactedCount,` +
     `ResultFlakyCount with sum as FlakyCount))`;
 
-  const base = `https://analytics.dev.azure.com/${encodeURIComponent(
-    app.org
-  )}/${encodeURIComponent(app.project)}/_odata/v4.0-preview/TestResultsDaily`;
-
-  return `${base}?$apply=${encodeURIComponent(apply)}`;
+  return (
+    `https://analytics.dev.azure.com/${encodeURIComponent(app.org)}/${encodeURIComponent(app.project)}` +
+    `/_odata/v4.0-preview/TestResultsDaily?$apply=${encodeURIComponent(apply)}`
+  );
 }
 
 interface ODataRow {
   TestSK?: number;
-  TestName?: string;
   Test?: { TestName?: string };
   TotalCount?: number;
   PassedCount?: number;
@@ -77,13 +60,8 @@ function rowToTest(row: ODataRow): FlakyTest {
   const flaky = row.FlakyCount ?? 0;
   return {
     testSK: row.TestSK ?? 0,
-    testName: row.Test?.TestName ?? row.TestName ?? "(unknown)",
-    total,
-    passed,
-    failed,
-    notExecuted,
-    notImpacted,
-    flaky,
+    testName: row.Test?.TestName ?? "(unknown)",
+    total, passed, failed, notExecuted, notImpacted, flaky,
     flakyRate: pct(flaky, total),
     passRate: testPassRate({ total, passed, notImpacted, notExecuted }),
   };
@@ -101,44 +79,27 @@ function summarize(tests: FlakyTest[]): SnapshotSummary {
       if (t.flaky > 0) s.flakyTestCount += 1;
       return s;
     },
-    {
-      totalResults: 0,
-      passed: 0,
-      failed: 0,
-      notExecuted: 0,
-      notImpacted: 0,
-      flaky: 0,
-      flakyTestCount: 0,
-    }
+    { totalResults: 0, passed: 0, failed: 0, notExecuted: 0, notImpacted: 0, flaky: 0, flakyTestCount: 0 }
   );
   const executed = acc.totalResults - acc.notExecuted;
   return {
     totalTests: tests.length,
-    totalResults: acc.totalResults,
-    passed: acc.passed,
-    failed: acc.failed,
-    notExecuted: acc.notExecuted,
-    notImpacted: acc.notImpacted,
-    flaky: acc.flaky,
-    flakyTestCount: acc.flakyTestCount,
+    ...acc,
     passRate: pct(acc.passed + acc.notImpacted, executed),
     flakyRate: pct(acc.flaky, acc.totalResults),
   };
 }
 
-function authHeader(): string {
-  // Azure DevOps PATs use Basic auth with an empty username.
-  return "Basic " + Buffer.from(":" + PAT).toString("base64");
-}
-
 export async function fetchFromAzure(
   app: AppConfig,
-  date: string
+  date: string,
+  pat: string,
+  workflow: string
 ): Promise<FlakySnapshot> {
-  const url = buildODataUrl(app, date);
+  const url = buildODataUrl(app, date, workflow);
   const res = await fetch(url, {
     headers: {
-      Authorization: authHeader(),
+      Authorization: "Basic " + btoa(":" + pat),
       Accept: "application/json",
     },
   });
@@ -147,10 +108,7 @@ export async function fetchFromAzure(
     const body = await res.text().catch(() => "");
     throw new Error(
       `Azure DevOps returned ${res.status} ${res.statusText}. ` +
-        `Check the PAT scope (Analytics: Read), org/project, and pipeline name. ${body.slice(
-          0,
-          300
-        )}`
+        `Check the PAT scope (Analytics: Read), org/project, and pipeline name. ${body.slice(0, 300)}`
     );
   }
 
@@ -163,7 +121,7 @@ export async function fetchFromAzure(
     app: app.key,
     appName: app.name,
     pipeline: app.pipeline,
-    workflow: WORKFLOW,
+    workflow,
     date,
     fetchedAt: new Date().toISOString(),
     mock: false,
@@ -174,8 +132,6 @@ export async function fetchFromAzure(
 
 /* ---------------------------------------------------------------- *
  * MOCK MODE                                                         *
- * Generates believable, deterministic-ish data so the whole UI     *
- * works without a PAT. Flakiness gently improves on later dates.   *
  * ---------------------------------------------------------------- */
 
 function seeded(seed: number): () => number {
@@ -195,12 +151,11 @@ const SUITES = [
   "Notifications.EmailTests",
 ];
 
-export function generateMock(app: AppConfig, date: string): FlakySnapshot {
+export function generateMock(app: AppConfig, date: string, workflow: string): FlakySnapshot {
   const dateSK = toDateSK(date);
   const rand = seeded(
     app.key.split("").reduce((a, c) => a + c.charCodeAt(0), 0) + dateSK
   );
-  // Later dates -> lower flakiness, to make comparisons meaningful.
   const dayIndex = (dateSK % 100) % 10;
   const improvement = Math.max(0, 1 - dayIndex * 0.08);
 
@@ -214,21 +169,11 @@ export function generateMock(app: AppConfig, date: string): FlakySnapshot {
     const failed = Math.floor(rand() * 4 * improvement);
     const notExecuted = Math.floor(rand() * 2);
     const notImpacted = Math.floor(rand() * 2);
-    const passed = Math.max(
-      0,
-      total - flaky - failed - notExecuted - notImpacted
-    );
+    const passed = Math.max(0, total - flaky - failed - notExecuted - notImpacted);
     tests.push({
       testSK: 100000 + i,
-      testName: `${suite}.Should_${["Handle", "Reject", "Retry", "Render", "Persist"][
-        Math.floor(rand() * 5)
-      ]}_Case${i + 1}`,
-      total,
-      passed,
-      failed,
-      notExecuted,
-      notImpacted,
-      flaky,
+      testName: `${suite}.Should_${["Handle", "Reject", "Retry", "Render", "Persist"][Math.floor(rand() * 5)]}_Case${i + 1}`,
+      total, passed, failed, notExecuted, notImpacted, flaky,
       flakyRate: pct(flaky, total),
       passRate: testPassRate({ total, passed, notImpacted, notExecuted }),
     });
@@ -239,7 +184,7 @@ export function generateMock(app: AppConfig, date: string): FlakySnapshot {
     app: app.key,
     appName: app.name,
     pipeline: app.pipeline,
-    workflow: WORKFLOW,
+    workflow,
     date,
     fetchedAt: new Date().toISOString(),
     mock: true,
