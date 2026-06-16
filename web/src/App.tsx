@@ -205,9 +205,9 @@ export default function App() {
       {error && <div className="error">{error}</div>}
 
       <main className="content">
-        <FileDropZone onFiles={handleDroppedFiles} noApps={noApps} />
+        <FileDropZone onFiles={handleDroppedFiles} />
 
-        {noApps && (
+        {noApps && !snap && (
           <div className="empty">
             No apps configured.{" "}
             <button className="link-btn" onClick={() => setShowSettings(true)}>Open Settings</button>{" "}
@@ -215,34 +215,34 @@ export default function App() {
           </div>
         )}
 
-        {activeApp && mode === "day" && (
-          snap ? (
-            <>
-              <div className="snap-meta">
-                Pipeline <code>{snap.pipeline}</code> · {snap.workflow} ·
-                fetched {new Date(snap.fetchedAt).toLocaleString()}
-                {snap.mock && " · sample data"}
-              </div>
-              <StatCards snap={snap} />
-              <div className="grid-2">
-                <div className="card"><OutcomeDonut snap={snap} /></div>
-                <div className="card"><TopFlakyBar snap={snap} /></div>
-              </div>
-              <FlakyTable snap={snap} />
-            </>
-          ) : (
-            <Empty text={`No stored data for ${activeApp.name}. Pick a date and "Fetch & store".`} />
-          )
+        {mode === "day" && snap && (
+          <>
+            <div className="snap-meta">
+              Pipeline <code>{snap.pipeline}</code> · {snap.workflow} ·
+              fetched {new Date(snap.fetchedAt).toLocaleString()}
+              {snap.mock && " · sample data"}
+            </div>
+            <StatCards snap={snap} />
+            <div className="grid-2">
+              <div className="card"><OutcomeDonut snap={snap} /></div>
+              <div className="card"><TopFlakyBar snap={snap} /></div>
+            </div>
+            <FlakyTable snap={snap} />
+          </>
         )}
 
-        {activeApp && mode === "compare" && (
+        {mode === "day" && !snap && activeApp && (
+          <Empty text={`No stored data for ${activeApp.name}. Pick a date and "Fetch & store".`} />
+        )}
+
+        {mode === "compare" && (
           cmp ? (
             <CompareView cmp={cmp} />
-          ) : dates.length < 2 ? (
+          ) : activeApp && dates.length < 2 ? (
             <Empty text="Fetch at least two days to compare before/after." />
-          ) : (
+          ) : activeApp ? (
             <Empty text="Choose two snapshots and press Compare." />
-          )
+          ) : null
         )}
       </main>
     </div>

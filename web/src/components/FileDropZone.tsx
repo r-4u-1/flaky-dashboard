@@ -3,10 +3,9 @@ import { FlakySnapshot } from "../types";
 
 interface Props {
   onFiles: (snapshots: FlakySnapshot[]) => void;
-  noApps?: boolean;
 }
 
-export function FileDropZone({ onFiles, noApps }: Props) {
+export function FileDropZone({ onFiles }: Props) {
   const [dragging, setDragging] = useState(false);
   const [parseError, setParseError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,8 +41,6 @@ export function FileDropZone({ onFiles, noApps }: Props) {
     [readFiles]
   );
 
-  if (!noApps) return null;
-
   return (
     <div className="drop-outer">
       <div
@@ -63,7 +60,7 @@ export function FileDropZone({ onFiles, noApps }: Props) {
         />
         <div className="drop-icon">⬇</div>
         <p className="drop-title">Drop snapshot JSON file{" "}<span className="drop-muted">(or two to compare)</span></p>
-        <p className="drop-hint">Load a previously exported snapshot without configuring an app.</p>
+        <p className="drop-hint">Load a snapshot JSON file exported from this app or another instance.</p>
         <button className="drop-btn" type="button">Browse files</button>
       </div>
       {parseError && <div className="error" style={{ marginTop: 12 }}>{parseError}</div>}
