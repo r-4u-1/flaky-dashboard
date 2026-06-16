@@ -1,0 +1,71 @@
+{
+  "app": "my-app",
+  "appName": "My App",
+  "pipeline": "12345",
+  "workflow": "CI / Run Tests",
+  "date": "2026-06-10",
+  "fetchedAt": "2026-06-10T14:00:00.000Z",
+  "mock": true,
+  "summary": {
+    "totalTests": 320,
+    "totalResults": 1280,
+    "passed": 1180,
+    "failed": 42,
+    "flaky": 38,
+    "notExecuted": 14,
+    "notImpacted": 6,
+    "passRate": 92.2,
+    "flakyRate": 2.97,
+    "flakyTestCount": 8
+  },
+  "tests": [
+    {
+      "testSK": 1001,
+      "testName": "Auth > login with valid credentials should redirect to dashboard",
+      "total": 4, "passed": 2, "failed": 1, "notExecuted": 0, "notImpacted": 1,
+      "flaky": 8, "flakyRate": 12.5, "passRate": 75.0
+    },
+    {
+      "testSK": 1002,
+      "testName": "Checkout > placing an order updates inventory count",
+      "total": 4, "passed": 3, "failed": 0, "notExecuted": 1, "notImpacted": 0,
+      "flaky": 6, "flakyRate": 9.4, "passRate": 85.0
+    },
+    {
+      "testSK": 1003,
+      "testName": "Search > results appear within 500ms for common queries",
+      "total": 4, "passed": 2, "failed": 2, "notExecuted": 0, "notImpacted": 0,
+      "flaky": 5, "flakyRate": 7.8, "passRate": 62.5
+    },
+    {
+      "testSK": 1004,
+      "testName": "Notifications > email is sent on order confirmation",
+      "total": 4, "passed": 3, "failed": 1, "notExecuted": 0, "notImpacted": 0,
+      "flaky": 4, "flakyRate": 6.2, "passRate": 80.0
+    },
+    {
+      "testSK": 1005,
+      "testName": "Profile > avatar upload accepts PNG under 2MB",
+      "total": 4, "passed": 3, "failed": 0, "notExecuted": 1, "notImpacted": 0,
+      "flaky": 4, "flakyRate": 6.2, "passRate": 85.0
+    },
+    {
+      "testSK": 1006,
+      "testName": "Dashboard > weekly summary chart renders correct totals",
+      "total": 4, "passed": 2, "failed": 1, "notExecuted": 1, "notImpacted": 0,
+      "flaky": 3, "flakyRate": 4.7, "passRate": 70.0
+    },
+    {
+      "testSK": 1007,
+      "testName": "Cart > removing last item clears the cart badge",
+      "total": 4, "passed": 3, "failed": 1, "notExecuted": 0, "notImpacted": 0,
+      "flaky": 2, "flakyRate": 3.1, "passRate": 80.0
+    },
+    {
+      "testSK": 1008,
+      "testName": "Reports > CSV export includes all selected columns",
+      "total": 4, "passed": 3, "failed": 0, "notExecuted": 0, "notImpacted": 1,
+      "flaky": 6, "flakyRate": 9.4, "passRate": 85.0
+    }
+  ]
+}
