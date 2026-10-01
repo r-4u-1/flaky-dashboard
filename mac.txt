@@ -1,0 +1,796 @@
+Option Explicit
+
+' =====================================================================
+'  Platform onboarding deck builder
+'  Run "BuildOnboardingDeck". It creates a NEW presentation (14 slides)
+'  with Morph transitions and entrance animations. Your open files are
+'  not touched.
+'  Palette: white base, dark blue, light blue, light pink, yellow.
+' =====================================================================
+
+Private pres As Presentation
+Private sld As Slide
+Private firstAnim As Boolean
+
+Private cNavy As Long, cSky As Long, cSkyStrong As Long, cPink As Long, cPinkFg As Long
+Private cYellow As Long, cFg As Long, cMuted As Long, cWhite As Long
+Private cLine As Long, cOnNavy As Long
+Private DOT As String
+
+Private Const TOTAL As Integer = 14
+Private Const FONT_HEAD As String = "Segoe UI Semibold"
+Private Const FONT_BODY As String = "Segoe UI"
+Private Const FONT_BLACK As String = "Segoe UI Black"
+Private Const MORPH As Long = 3953   ' ppEffectMorphByObject (PowerPoint 2019 / Microsoft 365)
+
+Public Sub BuildOnboardingDeck()
+    InitStyle
+    Set pres = Presentations.Add(msoTrue)
+    pres.PageSetup.SlideWidth = 960
+    pres.PageSetup.SlideHeight = 540
+
+    S01_Title
+    S02_Architecture
+    S03_Agenda
+    S04_WhoOwns
+    S05_OwnershipMap
+    S06_Setup
+    S07_Contract
+    S08_QualityGates
+    S09_Releases
+    S10_WhenThingsBreak
+    S11_Production
+    S12_Help
+    S13_FirstWeek
+    S14_Close
+
+    MsgBox "Your onboarding deck is ready." & vbCr & vbCr & _
+           "Press F5 in PowerPoint to play it with animations." & vbCr & _
+           "Replace the [placeholders] with your real details.", vbInformation, "Onboarding deck"
+End Sub
+
+' ---------------------------------------------------------------------
+'  Style
+' ---------------------------------------------------------------------
+Private Sub InitStyle()
+    cNavy = RGB(19, 41, 107)
+    cSky = RGB(230, 240, 252)
+    cSkyStrong = RGB(185, 211, 243)
+    cPink = RGB(253, 228, 236)
+    cPinkFg = RGB(138, 42, 79)
+    cYellow = RGB(255, 241, 184)
+    cFg = RGB(14, 26, 58)
+    cMuted = RGB(79, 91, 117)
+    cWhite = RGB(255, 255, 255)
+    cLine = RGB(227, 232, 242)
+    cOnNavy = RGB(188, 211, 242)
+    DOT = "  " & ChrW(183) & "  "
+End Sub
+
+' ---------------------------------------------------------------------
+'  Slide scaffolding
+' ---------------------------------------------------------------------
+Private Sub NewSlide(ByVal idx As Integer, ByVal notes As String)
+    Set sld = pres.Slides.Add(idx, ppLayoutBlank)
+    sld.FollowMasterBackground = msoFalse
+    sld.Background.Fill.Solid
+    sld.Background.Fill.ForeColor.RGB = cWhite
+    firstAnim = True
+
+    Blobs idx
+    Progress idx
+    If idx > 1 And idx < TOTAL Then Footer idx
+
+    On Error Resume Next
+    sld.SlideShowTransition.EntryEffect = MORPH
+    If Err.Number <> 0 Then Err.Clear: sld.SlideShowTransition.EntryEffect = ppEffectFadeSmoothly
+    sld.SlideShowTransition.Duration = 1.1
+    sld.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.Text = notes
+    Err.Clear
+    On Error GoTo 0
+End Sub
+
+' Soft pink and yellow circles. Same names on every slide, so Morph glides them between slides.
+Private Sub Blobs(ByVal idx As Integer)
+    Dim px, py, ps, yx, yy, ys, i As Integer
+    px = Array(620, 700, 760, 740, 690, 760, 720, 700, 760, 740, 700, 720, 760, 560)
+    py = Array(-200, -230, -250, -240, -260, -230, -250, -240, -260, -230, -240, -250, -230, -180)
+    ps = Array(460, 340, 300, 320, 300, 320, 300, 320, 300, 320, 300, 320, 320, 520)
+    yx = Array(-140, -100, -80, -120, -90, -110, -80, -100, -90, -120, -100, -80, -110, -160)
+    yy = Array(380, 420, 440, 430, 450, 420, 440, 430, 450, 420, 440, 430, 440, 340)
+    ys = Array(320, 240, 220, 240, 220, 240, 220, 240, 220, 240, 220, 240, 240, 380)
+    i = idx - 1
+    Box px(i), py(i), ps(i), ps(i), cPink, 0, -1, "!!blobPink", msoShapeOval
+    Box yx(i), yy(i), ys(i), ys(i), cYellow, 0, -1, "!!blobYellow", msoShapeOval
+End Sub
+
+' Thin progress bar along the bottom edge; Morph grows it slide to slide.
+Private Sub Progress(ByVal idx As Integer)
+    Box 0, 536, 960, 4, cSky, 0, -1, "!!track", msoShapeRectangle
+    Box 0, 536, 960 * idx / TOTAL, 4, cNavy, 0, -1, "!!progress", msoShapeRectangle
+End Sub
+
+Private Sub Footer(ByVal idx As Integer)
+    Txt 56, 506, 500, 16, "[App name]" & DOT & "Platform onboarding", 9, cMuted
+    Txt 804, 506, 100, 16, Format(idx, "00") & " / " & Format(TOTAL, "00"), 9, cMuted, FONT_BODY, ppAlignRight
+End Sub
+
+Private Sub Header(ByVal eyebrow As String, ByVal title As String)
+    Dim p As Shape, t As Shape
+    Set p = Pill(56, 44, eyebrow, cPink, cPinkFg, 9, True)
+    Set t = Txt(56, 76, 820, 48, title, 30, cNavy, FONT_HEAD)
+    Anim p, msoAnimEffectFade, 0, 0.4
+    Anim t, msoAnimEffectAscend, 0.1, 0.6
+End Sub
+
+' ---------------------------------------------------------------------
+'  Building blocks
+' ---------------------------------------------------------------------
+Private Function Box(ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, _
+                     ByVal fillC As Long, Optional ByVal radius As Single = 0.12, _
+                     Optional ByVal lineC As Long = -1, Optional ByVal nm As String = "", _
+                     Optional ByVal shp As Long = 5) As Shape
+    Dim s As Shape
+    If radius = 0 And shp = msoShapeRoundedRectangle Then shp = msoShapeRectangle
+    Set s = sld.Shapes.AddShape(shp, x, y, w, h)
+    If shp = msoShapeRoundedRectangle Or shp = msoShapeRound2SameRectangle Then s.Adjustments(1) = radius
+    s.Fill.Solid
+    s.Fill.ForeColor.RGB = fillC
+    If lineC = -1 Then
+        s.Line.Visible = msoFalse
+    Else
+        s.Line.Visible = msoTrue
+        s.Line.ForeColor.RGB = lineC
+        s.Line.Weight = 1
+    End If
+    s.Shadow.Visible = msoFalse
+    If nm <> "" Then s.Name = nm
+    Set Box = s
+End Function
+
+Private Function Txt(ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, _
+                     ByVal t As String, ByVal size As Single, ByVal col As Long, _
+                     Optional ByVal fontName As String = FONT_BODY, Optional ByVal align As Long = 1) As Shape
+    Dim s As Shape
+    Set s = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, x, y, w, h)
+    With s.TextFrame
+        .WordWrap = msoTrue
+        .MarginLeft = 0: .MarginRight = 0: .MarginTop = 0: .MarginBottom = 0
+        .TextRange.Text = t
+        .TextRange.Font.Name = fontName
+        .TextRange.Font.Size = size
+        .TextRange.Font.Color.RGB = col
+        .TextRange.ParagraphFormat.Alignment = align
+        .AutoSize = ppAutoSizeNone
+    End With
+    Set Txt = s
+End Function
+
+Private Sub StylePara(ByVal s As Shape, ByVal i As Integer, ByVal size As Single, ByVal col As Long, _
+                      ByVal fontName As String, Optional ByVal spacing As Single = 0)
+    With s.TextFrame.TextRange.Paragraphs(i).Font
+        .Size = size
+        .Color.RGB = col
+        .Name = fontName
+    End With
+    If spacing <> 0 Then
+        On Error Resume Next
+        s.TextFrame2.TextRange.Paragraphs(i).Font.Spacing = spacing
+        On Error GoTo 0
+    End If
+End Sub
+
+Private Sub BoxText(ByVal s As Shape, ByVal t As String, ByVal size As Single, ByVal col As Long, _
+                    ByVal fontName As String, ByVal align As Long, ByVal anchor As Long)
+    With s.TextFrame
+        .WordWrap = msoTrue
+        .MarginLeft = 14: .MarginRight = 14: .MarginTop = 6: .MarginBottom = 6
+        .VerticalAnchor = anchor
+        .TextRange.Text = t
+        .TextRange.Font.Name = fontName
+        .TextRange.Font.Size = size
+        .TextRange.Font.Color.RGB = col
+        .TextRange.ParagraphFormat.Alignment = align
+    End With
+End Sub
+
+Private Function Pill(ByVal x As Single, ByVal y As Single, ByVal t As String, ByVal fillC As Long, _
+                      ByVal textC As Long, Optional ByVal size As Single = 10, Optional ByVal caps As Boolean = False) As Shape
+    Dim s As Shape
+    Set s = Box(x, y, 60, 22, fillC, 0.5)
+    With s.TextFrame
+        .WordWrap = msoFalse
+        .MarginLeft = 11: .MarginRight = 11: .MarginTop = 3: .MarginBottom = 3
+        .VerticalAnchor = msoAnchorMiddle
+        If caps Then .TextRange.Text = UCase(t) Else .TextRange.Text = t
+        .TextRange.Font.Name = FONT_HEAD
+        .TextRange.Font.Size = size
+        .TextRange.Font.Color.RGB = textC
+        .TextRange.ParagraphFormat.Alignment = ppAlignCenter
+        .AutoSize = ppAutoSizeShapeToFitText
+    End With
+    If caps Then
+        On Error Resume Next
+        s.TextFrame2.TextRange.Font.Spacing = 1.2
+        On Error GoTo 0
+    End If
+    s.Left = x
+    s.Top = y
+    Set Pill = s
+End Function
+
+' A rounded card with a bold heading paragraph and body text (optionally bulleted).
+Private Function Card(ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, _
+                      ByVal fillC As Long, ByVal lineC As Long, ByVal head As String, ByVal body As String, _
+                      ByVal headC As Long, ByVal bodyC As Long, ByVal headSize As Single, ByVal bodySize As Single, _
+                      Optional ByVal bullets As Boolean = False) As Shape
+    Dim s As Shape, i As Integer
+    Set s = Box(x, y, w, h, fillC, 0.07, lineC)
+    With s.TextFrame
+        .WordWrap = msoTrue
+        .AutoSize = ppAutoSizeNone
+        .MarginLeft = 20: .MarginRight = 20: .MarginTop = 18: .MarginBottom = 16
+        .VerticalAnchor = msoAnchorTop
+        If body <> "" Then .TextRange.Text = head & vbCr & body Else .TextRange.Text = head
+        .TextRange.ParagraphFormat.Alignment = ppAlignLeft
+        .TextRange.ParagraphFormat.SpaceAfter = 5
+        .TextRange.Font.Name = FONT_BODY
+        .TextRange.Font.Size = bodySize
+        .TextRange.Font.Color.RGB = bodyC
+        With .TextRange.Paragraphs(1)
+            .Font.Name = FONT_HEAD
+            .Font.Size = headSize
+            .Font.Color.RGB = headC
+            .ParagraphFormat.SpaceAfter = 10
+        End With
+        If bullets And body <> "" Then
+            On Error Resume Next
+            For i = 2 To .TextRange.Paragraphs.Count
+                With .TextRange.Paragraphs(i).ParagraphFormat.Bullet
+                    .Visible = msoTrue
+                    .Character = 8226
+                    .UseTextColor = msoFalse
+                    .Font.Color.RGB = headC
+                End With
+            Next i
+            .Ruler.Levels(1).FirstMargin = 0
+            .Ruler.Levels(1).LeftMargin = 16
+            On Error GoTo 0
+        End If
+    End With
+    Set Card = s
+End Function
+
+' Small caps label above a short paragraph.
+Private Function LabelBody(ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, _
+                           ByVal label As String, ByVal body As String, ByVal labelC As Long) As Shape
+    Dim s As Shape
+    Set s = Txt(x, y, w, h, UCase(label) & vbCr & body, 13, cFg)
+    StylePara s, 1, 9.5, labelC, FONT_HEAD, 1.2
+    s.TextFrame.TextRange.Paragraphs(1).ParagraphFormat.SpaceAfter = 4
+    s.TextFrame.TextRange.ParagraphFormat.SpaceWithin = 1.05
+    Set LabelBody = s
+End Function
+
+' Soft navy shadow, used to lift a card off the page.
+Private Sub Lift(ByVal s As Shape)
+    On Error Resume Next
+    With s.Shadow
+        .Visible = msoTrue
+        .ForeColor.RGB = cNavy
+        .Transparency = 0.86
+        .OffsetX = 0
+        .OffsetY = 8
+        .Blur = 22
+    End With
+    On Error GoTo 0
+End Sub
+
+' Yellow highlighter strokes behind each line of one paragraph, wiped in from the left.
+Private Sub HighlightPara(ByVal t As Shape, ByVal paraIdx As Integer, ByVal startDelay As Single)
+    Dim para As TextRange, ln As TextRange, hl As Shape, i As Integer
+    On Error Resume Next
+    Set para = t.TextFrame.TextRange.Paragraphs(paraIdx)
+    For i = 1 To 4
+        Set ln = Nothing
+        Set ln = para.Lines(i, 1)
+        If ln Is Nothing Then Exit For
+        If Len(Trim(Replace(ln.Text, vbCr, ""))) = 0 Then Exit For
+        Set hl = Box(ln.BoundLeft - 4, ln.BoundTop + ln.BoundHeight * 0.58, ln.BoundWidth + 8, ln.BoundHeight * 0.3, cYellow, 0.3)
+        Anim hl, msoAnimEffectWipe, startDelay + (i - 1) * 0.3, 0.45, msoAnimDirectionLeft
+    Next i
+    t.ZOrder msoBringToFront
+    On Error GoTo 0
+End Sub
+
+' Adds an entrance effect. The first effect on a slide starts after the transition;
+' the rest start with it, offset by their delay, so the slide plays by itself.
+Private Function Anim(ByVal s As Shape, ByVal eff As Long, ByVal delay As Single, ByVal dur As Single, _
+                      Optional ByVal dirn As Long = 0) As Effect
+    Dim e As Effect, trig As Long
+    If firstAnim Then trig = msoAnimTriggerAfterPrevious Else trig = msoAnimTriggerWithPrevious
+    On Error Resume Next
+    Set e = sld.TimeLine.MainSequence.AddEffect(Shape:=s, effectId:=eff, trigger:=trig)
+    If e Is Nothing Then
+        Err.Clear
+        Set e = sld.TimeLine.MainSequence.AddEffect(Shape:=s, effectId:=msoAnimEffectFade, trigger:=trig)
+    End If
+    If Not e Is Nothing Then
+        e.Timing.Duration = dur
+        e.Timing.TriggerDelayTime = delay
+        If dirn <> 0 Then e.EffectParameters.Direction = dirn
+    End If
+    Err.Clear
+    On Error GoTo 0
+    firstAnim = False
+    Set Anim = e
+End Function
+
+Private Function MinS(ByVal a As Single, ByVal b As Single) As Single
+    If a < b Then MinS = a Else MinS = b
+End Function
+
+' Stylised app window: shell bar, side nav and four module tiles.
+' Shapes are named with "!!" so Morph zooms the window between slides 1 and 2.
+Private Sub AppWindow(ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single, _
+                      ByVal labelled As Boolean, ByVal d As Single, ByVal animate As Boolean)
+    Dim sx As Single, sy As Single, s As Shape, i As Integer, lc As Long
+    Dim tx, ty, tf, nms, heads, subs
+    sx = w / 400: sy = h / 280
+
+    Set s = Box(x, y, w, h, cWhite, 0.06, cSkyStrong, "!!app_frame")
+    Lift s
+    If animate Then Anim s, msoAnimEffectFadedZoom, d, 0.7
+
+    Set s = Box(x, y, w, 36 * sy, cNavy, MinS(0.5, 0.06 * MinS(w, h) / (36 * sy)), -1, "!!app_bar", msoShapeRound2SameRectangle)
+    If labelled Then
+        BoxText s, "App shell" & DOT & "owned by the platform team", 11, cWhite, FONT_HEAD, ppAlignLeft, msoAnchorMiddle
+        s.TextFrame.MarginLeft = 64 * sx
+    End If
+    If animate Then Anim s, msoAnimEffectFade, d + 0.2, 0.4
+
+    For i = 0 To 2
+        Set s = Box(x + (16 + i * 14) * sx - 4, y + 18 * sy - 4, 8, 8, cOnNavy, 0, -1, "!!app_dot" & i, msoShapeOval)
+        If animate Then Anim s, msoAnimEffectFade, d + 0.3, 0.4
+    Next i
+
+    Set s = Box(x + 16 * sx, y + 52 * sy, 72 * sx, 212 * sy, cSky, 0.08, -1, "!!app_nav")
+    If labelled Then
+        Dim nl As String
+        nl = "Home" & vbCr & "Orders" & vbCr & "Reports" & vbCr & "Settings"
+        BoxText s, nl, 10, cMuted, FONT_BODY, ppAlignLeft, msoAnchorTop
+        s.TextFrame.MarginLeft = 10: s.TextFrame.MarginTop = 12
+        s.TextFrame.TextRange.ParagraphFormat.SpaceAfter = 6
+    End If
+    If animate Then Anim s, msoAnimEffectFade, d + 0.3, 0.4
+
+    tx = Array(100, 248, 100, 248)
+    ty = Array(52, 52, 164, 164)
+    tf = Array(cSky, cPink, cWhite, cYellow)
+    nms = Array("!!app_tileA", "!!app_tileB", "!!app_tileC", "!!app_tileYou")
+    heads = Array("Module A", "Module B", "Module C", "Your module")
+    subs = Array("Team Alpha", "Team Beta", "Team Gamma", "Your team")
+    For i = 0 To 3
+        lc = -1
+        If i = 2 Then lc = cLine
+        If i = 3 Then lc = cNavy
+        Set s = Box(x + tx(i) * sx, y + ty(i) * sy, 136 * sx, 100 * sy, tf(i), 0.1, lc, nms(i))
+        If i = 3 Then s.Line.DashStyle = msoLineDash: s.Line.Weight = 1.75
+        If labelled Then
+            BoxText s, heads(i) & vbCr & subs(i), 10.5, cMuted, FONT_BODY, ppAlignLeft, msoAnchorTop
+            s.TextFrame.MarginTop = 10: s.TextFrame.MarginLeft = 12
+            StylePara s, 1, 13, cNavy, FONT_HEAD
+        End If
+        If animate Then Anim s, msoAnimEffectFadedZoom, d + 0.45 + i * 0.12, 0.5
+    Next i
+End Sub
+
+' =====================================================================
+'  Slides
+' =====================================================================
+
+Private Sub S01_Title()
+    Dim p As Shape, t As Shape, l As Shape, f As Shape, g As Shape, i As Integer
+    Dim labels, values
+    NewSlide 1, "Welcome. This session walks you through how our app works, how your module fits in, " & _
+                "and how your code gets to production. It takes about 20 minutes. Stop me any time with questions."
+
+    Set p = Pill(56, 112, "Onboarding" & DOT & "for module teams", cPink, cPinkFg, 9, True)
+    Set t = Txt(56, 146, 490, 170, "Build your module." & vbCr & "We'll get it to production.", 40, cNavy, FONT_BLACK)
+    t.TextFrame.TextRange.ParagraphFormat.SpaceWithin = 0.9
+    Anim p, msoAnimEffectFade, 0, 0.5
+    Anim t, msoAnimEffectAscend, 0.15, 0.8
+    HighlightPara t, 2, 0.8
+
+    Set l = Txt(56, 330, 450, 60, "Welcome to [App name]. You own a module; we own the platform it runs on. " & _
+                "Here's what you need to build, test and ship safely.", 15, cMuted)
+    Anim l, msoAnimEffectFade, 1.1, 0.6
+
+    labels = Array("Teams on the app", "Modules", "Next release")
+    values = Array("[N]", "[N]", "[date]")
+    For i = 0 To 2
+        Set f = Txt(56 + i * 150, 414, 140, 54, UCase(labels(i)) & vbCr & values(i), 22, cNavy, FONT_HEAD)
+        StylePara f, 1, 9, cMuted, FONT_HEAD, 1
+        Anim f, msoAnimEffectAscend, 1.3 + i * 0.12, 0.5
+    Next i
+
+    AppWindow 560, 150, 340, 238, False, 0.35, True
+    Set g = Pill(0, 0, "Your module plugs in here", cNavy, cWhite, 10)
+    g.Left = 560 + 340 - g.Width + 20
+    g.Top = 150 + 238 - g.Height / 2
+    g.Name = "!!tag"
+    Lift g
+    Anim g, msoAnimEffectFadedZoom, 1.7, 0.5
+End Sub
+
+Private Sub S02_Architecture()
+    Dim s As Shape, n As Shape, i As Integer, labels, bodies
+    NewSlide 2, "The app is one shell with many modules. We own the shell: routing, layout, navigation, auth and error handling. " & _
+                "Each team owns its modules. Everyone uses the same shared services, so nobody rebuilds auth or analytics."
+    Header "Start here", "How the app fits together"
+
+    ' Same shapes as the title slide: Morph zooms the window up into this diagram.
+    AppWindow 56, 128, 500, 290, True, 0, False
+
+    Set s = Box(56, 430, 500, 48, cSky, 0.2, cSkyStrong)
+    BoxText s, "Shared services" & "    Auth" & DOT & "API gateway" & DOT & "State" & DOT & "Design system" & DOT & "Flags" & DOT & "Analytics", _
+            10.5, cMuted, FONT_BODY, ppAlignLeft, msoAnchorMiddle
+    With s.TextFrame.TextRange.Characters(1, 15).Font
+        .Bold = msoTrue
+        .Color.RGB = cNavy
+    End With
+    Anim s, msoAnimEffectAscend, 0.5, 0.5
+
+    labels = Array("The shell", "Modules", "Shared services")
+    bodies = Array("Routing, layout, navigation, auth context and error boundaries. Owned by the platform team.", _
+                   "Pages and features built by each team and loaded into the shell.", _
+                   "Common building blocks every module uses, so no team has to rebuild them.")
+    For i = 0 To 2
+        Set n = LabelBody(596, 136 + i * 100, 308, 90, labels(i), bodies(i), cPinkFg)
+        Anim n, msoAnimEffectAscend, 0.6 + i * 0.15, 0.5
+    Next i
+End Sub
+
+Private Sub S03_Agenda()
+    Dim c As Shape, t As Shape, k As Shape, i As Integer, items
+    NewSlide 3, "Here's the plan for today. By the end you should know where your module fits, how to ship it and who to ask."
+    Header "Agenda", "What we'll cover"
+
+    items = Array("Who owns what", "Finding the team behind a page", "Getting set up", "The module contract", _
+                  "Quality gates and releases", "Running in production", "Getting help and your first week")
+    For i = 0 To 6
+        Set c = Box(56, 140 + i * 48, 30, 30, cNavy, 0, -1, "", msoShapeOval)
+        BoxText c, CStr(i + 1), 12, cWhite, FONT_HEAD, ppAlignCenter, msoAnchorMiddle
+        c.TextFrame.MarginLeft = 0: c.TextFrame.MarginRight = 0
+        Set t = Txt(100, 143 + i * 48, 440, 26, items(i), 17, cFg)
+        Anim c, msoAnimEffectFadedZoom, 0.3 + i * 0.09, 0.4
+        Anim t, msoAnimEffectAscend, 0.3 + i * 0.09, 0.5
+    Next i
+
+    Set k = Card(600, 140, 304, 250, cPink, -1, "By the end you'll know", _
+                 "Where your module fits in the app" & vbCr & "How your code gets to production" & vbCr & "Who to ask when you're stuck", _
+                 cPinkFg, cFg, 18, 14, True)
+    Anim k, msoAnimEffectFadedZoom, 0.5, 0.6
+End Sub
+
+Private Sub S04_WhoOwns()
+    Dim a As Shape, b As Shape, p As Shape
+    NewSlide 4, "The short version of ownership: we own the platform, you own your module. " & _
+                "A bug in your module is yours to fix. A bug in the shell or the pipeline is ours."
+    Header "Ownership", "Who owns what"
+
+    Set a = Card(56, 140, 410, 270, cNavy, -1, "The platform team owns", _
+                 "App shell and routing" & vbCr & "Shared libraries and the design system" & vbCr & _
+                 "CI/CD and the release pipeline" & vbCr & "Platform-wide quality gates", cWhite, cWhite, 20, 15, True)
+    Set b = Card(494, 140, 410, 270, cYellow, -1, "Your team owns", _
+                 "Your module's code and tests" & vbCr & "Bugs and incidents in your module" & vbCr & _
+                 "Your feature flags and their cleanup" & vbCr & "Your module's dependencies", cNavy, cFg, 20, 15, True)
+    Lift a: Lift b
+    Anim a, msoAnimEffectFadedZoom, 0.3, 0.6
+    Anim b, msoAnimEffectFadedZoom, 0.5, 0.6
+
+    Set p = Pill(56, 436, "Bug in your module? It's yours.   Bug in the shell? It's ours.", cSky, cNavy, 12)
+    Anim p, msoAnimEffectAscend, 1, 0.5
+End Sub
+
+Private Sub S05_OwnershipMap()
+    Dim ts As Shape, tb As Table, r As Integer, c As Integer, data, k1 As Shape, k2 As Shape
+    NewSlide 5, "This is how you find the team behind any page. We keep it as a list so each team updates its own row. " & _
+                "Fill in the real modules and contacts before presenting."
+    Header "Ownership map", "Find the team behind any page"
+
+    data = Array( _
+        Array("Module / route", "Team", "Contact", "Channel"), _
+        Array("App shell   /", "Platform", "[name]", "#platform-help"), _
+        Array("[module]   /route", "[team]", "[name]", "#[channel]"), _
+        Array("[module]   /route", "[team]", "[name]", "#[channel]"))
+
+    Set ts = sld.Shapes.AddTable(4, 4, 56, 136, 848, 190)
+    Set tb = ts.Table
+    On Error Resume Next
+    tb.ApplyStyle "{2D5ABB26-0587-4C30-8999-92F81FD0307C}"   ' No Style, No Grid
+    On Error GoTo 0
+    For r = 1 To 4
+        For c = 1 To 4
+            With tb.Cell(r, c).Shape
+                .Fill.Visible = msoTrue
+                .Fill.Solid
+                If r = 1 Then .Fill.ForeColor.RGB = cSky Else .Fill.ForeColor.RGB = cWhite
+                .TextFrame.MarginLeft = 14
+                .TextFrame.VerticalAnchor = msoAnchorMiddle
+                .TextFrame.TextRange.Text = data(r - 1)(c - 1)
+                .TextFrame.TextRange.Font.Name = IIf(r = 1, FONT_HEAD, FONT_BODY)
+                .TextFrame.TextRange.Font.Size = IIf(r = 1, 11, 14)
+                .TextFrame.TextRange.Font.Color.RGB = IIf(r = 1, cNavy, cFg)
+            End With
+            With tb.Cell(r, c).Borders(ppBorderBottom)
+                .Visible = msoTrue
+                .ForeColor.RGB = cSkyStrong
+                .Weight = 1
+            End With
+        Next c
+    Next r
+    Anim ts, msoAnimEffectAscend, 0.3, 0.6
+
+    Set k1 = Card(56, 360, 414, 100, cSky, -1, "Keep it current", _
+                  "Store this as a SharePoint or Confluence list so each team can edit its own row.", cNavy, cFg, 14, 12)
+    Set k2 = Card(490, 360, 414, 100, cPink, -1, "New module or route?", _
+                  "Raise a request at [intake link]. The platform team approves it. Code owners live in [CODEOWNERS path].", cPinkFg, cFg, 14, 12)
+    Anim k1, msoAnimEffectAscend, 0.7, 0.5
+    Anim k2, msoAnimEffectAscend, 0.85, 0.5
+End Sub
+
+Private Sub S06_Setup()
+    Dim cw As Single, cx As Single, i As Integer, base As Shape, lnRun As Shape, c As Shape, k As Shape, heads, bodies
+    NewSlide 6, "Getting set up should take about an hour. The README in the repo is the source of truth, because it changes with the code."
+    Header "Getting set up", "From zero to running in about an hour"
+
+    heads = Array("Get access", "Install tools", "Run your module", "Use test data", "Open your first PR")
+    bodies = Array("Repo, CI and environments: [access link]", "Node [version] and [pnpm / npm / yarn]", _
+                   "Against the shared shell: [command]", "Mock APIs, test accounts and seed data: [link]", _
+                   "Follow the walkthrough: [link]")
+    cw = (848 - 4 * 14) / 5
+
+    Set base = sld.Shapes.AddLine(56 + 18, 154, 56 + 4 * (cw + 14) + 18, 154)
+    base.Line.ForeColor.RGB = cSkyStrong: base.Line.Weight = 3
+    Set lnRun = sld.Shapes.AddLine(56 + 18, 154, 56 + 4 * (cw + 14) + 18, 154)
+    lnRun.Line.ForeColor.RGB = cNavy: lnRun.Line.Weight = 3
+    Anim lnRun, msoAnimEffectWipe, 0.3, 1.4, msoAnimDirectionLeft
+
+    For i = 0 To 4
+        cx = 56 + i * (cw + 14)
+        Set c = Box(cx, 136, 36, 36, cNavy, 0, -1, "", msoShapeOval)
+        BoxText c, CStr(i + 1), 13, cWhite, FONT_HEAD, ppAlignCenter, msoAnchorMiddle
+        c.TextFrame.MarginLeft = 0: c.TextFrame.MarginRight = 0
+        Set k = Card(cx, 190, cw, 180, cSky, -1, heads(i), bodies(i), cNavy, cMuted, 15, 12)
+        k.TextFrame.MarginLeft = 16: k.TextFrame.MarginRight = 14
+        Anim c, msoAnimEffectFadedZoom, 0.3 + i * 0.3, 0.4
+        Anim k, msoAnimEffectAscend, 0.4 + i * 0.3, 0.5
+    Next i
+
+    Set k = Card(56, 390, 848, 76, cPink, -1, "Docs live in the repo", _
+                 "Setup, the module contract and CI rules change with the code, so the README is the source of truth: [link]", _
+                 cPinkFg, cFg, 14, 12)
+    Anim k, msoAnimEffectFade, 2, 0.6
+End Sub
+
+Private Sub S07_Contract()
+    Dim k As Shape, i As Integer, xs, ys, heads, bodies
+    NewSlide 7, "These four rules let lots of teams share one app without breaking each other's work."
+    Header "Building a module", "The module contract"
+
+    xs = Array(56, 490, 56, 490)
+    ys = Array(136, 136, 302, 302)
+    heads = Array("Stay inside your boundary", "Use the design system first", "Keep dependencies lean", "Clean up your flags")
+    bodies = Array("Don't write to global state, add global CSS or patch the shell. Talk to the shell only through [events / shared store / router API].", _
+                   "Need a new component? Propose it in #platform-help before building your own.", _
+                   "Use approved libraries at the platform's pinned versions. Bundle budget: [N] KB gzipped per module.", _
+                   "Name flags [team]-[feature]. Remove each flag within [N] sprints of a full rollout.")
+    For i = 0 To 3
+        Set k = Card(xs(i), ys(i), 414, 150, cWhite, cSkyStrong, heads(i), bodies(i), cNavy, cFg, 17, 13)
+        Lift k
+        Anim k, msoAnimEffectFadedZoom, 0.3 + i * 0.15, 0.5
+    Next i
+End Sub
+
+Private Sub S08_QualityGates()
+    Dim r As Shape, p As Shape, k As Shape, i As Integer, y As Single, checks, blocks
+    NewSlide 8, "Every PR runs these checks. Navy pills block the merge; yellow ones only warn. Run them locally before pushing to save time."
+    Header "Quality gates", "What CI checks on every PR"
+
+    checks = Array("Lint and type-check", "Unit tests, [N]% coverage on changed code", "E2E smoke tests", _
+                   "Bundle size budget", "Accessibility, WCAG [2.2 AA]", "Core Web Vitals budget")
+    blocks = Array(True, True, True, True, False, False)
+    For i = 0 To 5
+        y = 136 + i * 50
+        Set r = Box(56, y, 600, 42, cWhite, 0.25, cLine)
+        BoxText r, checks(i), 14, cFg, FONT_BODY, ppAlignLeft, msoAnchorMiddle
+        r.TextFrame.MarginLeft = 18
+        If blocks(i) Then
+            Set p = Pill(0, 0, "Blocks merge", cNavy, cWhite, 10)
+        Else
+            Set p = Pill(0, 0, "Warns", cYellow, cNavy, 10)
+        End If
+        p.Left = 56 + 600 - p.Width - 12
+        p.Top = y + (42 - p.Height) / 2
+        Anim r, msoAnimEffectAscend, 0.3 + i * 0.12, 0.5
+        Anim p, msoAnimEffectFadedZoom, 0.5 + i * 0.12, 0.4
+    Next i
+
+    Set k = Card(690, 136, 214, 292, cNavy, -1, "How to read this", _
+                 "Blocks merge: the PR can't merge until it passes." & vbCr & _
+                 "Warns: flagged on the PR, but you can still merge." & vbCr & _
+                 "Run every check locally first: [command]", cWhite, cOnNavy, 17, 12.5, True)
+    Lift k
+    Anim k, msoAnimEffectFadedZoom, 1.2, 0.6
+End Sub
+
+Private Sub S09_Releases()
+    Dim s As Shape, base As Shape, lnRun As Shape, n As Shape, l As Shape, k As Shape, i As Integer, cx As Single
+    Dim heads, bodies
+    NewSlide 9, "This is the path to production. Merges go to dev automatically, the release candidate is cut at the cut-off, " & _
+                "and we release to production. Use feature flags for unfinished work."
+    Header "Releases", "How your change reaches production"
+
+    Set s = Txt(56, 124, 820, 22, "We release [every N weeks]. Code cut-off is [day, time]. Release notes go to #releases.", 14, cMuted)
+    Anim s, msoAnimEffectFade, 0.3, 0.5
+
+    Set base = sld.Shapes.AddLine(156, 230, 804, 230)
+    base.Line.ForeColor.RGB = cSkyStrong: base.Line.Weight = 4
+    Set lnRun = sld.Shapes.AddLine(156, 230, 804, 230)
+    lnRun.Line.ForeColor.RGB = cNavy: lnRun.Line.Weight = 4
+    Anim lnRun, msoAnimEffectWipe, 0.5, 1.8, msoAnimDirectionLeft
+
+    heads = Array("Merge to main", "Dev", "Test / UAT", "Production")
+    bodies = Array("All checks green", "Deployed automatically on merge", "Release candidate cut at the code cut-off", "Released by the platform team")
+    For i = 0 To 3
+        cx = 156 + i * 216
+        If i = 3 Then
+            Set n = Box(cx - 26, 204, 52, 52, cYellow, 0, cNavy, "", msoShapeOval)
+            n.Line.Weight = 2
+            BoxText n, CStr(i + 1), 16, cNavy, FONT_HEAD, ppAlignCenter, msoAnchorMiddle
+        Else
+            Set n = Box(cx - 24, 206, 48, 48, cNavy, 0, -1, "", msoShapeOval)
+            BoxText n, CStr(i + 1), 16, cWhite, FONT_HEAD, ppAlignCenter, msoAnchorMiddle
+        End If
+        n.TextFrame.MarginLeft = 0: n.TextFrame.MarginRight = 0
+        Set l = Txt(cx - 100, 272, 200, 70, heads(i) & vbCr & bodies(i), 12, cMuted, FONT_BODY, ppAlignCenter)
+        StylePara l, 1, 16, cNavy, FONT_HEAD
+        l.TextFrame.TextRange.Paragraphs(1).ParagraphFormat.SpaceAfter = 4
+        Anim n, msoAnimEffectFadedZoom, 0.5 + i * 0.55, 0.45
+        Anim l, msoAnimEffectAscend, 0.6 + i * 0.55, 0.5
+    Next i
+
+    Set k = Card(56, 380, 848, 72, cPink, -1, "Not finished? Ship it anyway, behind a feature flag.", _
+                 "Don't hold back a merge to wait for a release.", cPinkFg, cFg, 15, 12.5)
+    Anim k, msoAnimEffectFade, 2.6, 0.6
+End Sub
+
+Private Sub S10_WhenThingsBreak()
+    Dim k As Shape, l As Shape, i As Integer, xs, heads, bodies, fills, headCs, bodyCs, envs, envBodies
+    NewSlide 10, "When something breaks: hotfixes are for serious issues only. The fastest fix is usually turning your feature flag off. " & _
+                 "Below are the three environments and what each is for."
+    Header "When things go wrong", "Hotfixes, rollbacks and environments"
+
+    xs = Array(56, 344, 632)
+    heads = Array("Hotfixes", "Rollback", "Fastest fix: flip the flag")
+    bodies = Array("Only for [Sev 1-2] issues. Ask in #platform-help and tag [@release manager]. A platform engineer and your tech lead both approve.", _
+                   "The platform team can roll back [the whole app / a single module] in about [N] minutes.", _
+                   "Turning your feature flag off is usually quicker than a rollback, and your team can do it yourselves.")
+    fills = Array(cYellow, cSky, cNavy)
+    headCs = Array(cNavy, cNavy, cWhite)
+    bodyCs = Array(cFg, cFg, cOnNavy)
+    For i = 0 To 2
+        Set k = Card(xs(i), 136, 272, 190, fills(i), -1, heads(i), bodies(i), headCs(i), bodyCs(i), 18, 13)
+        Lift k
+        Anim k, msoAnimEffectFadedZoom, 0.3 + i * 0.18, 0.55
+    Next i
+
+    Set l = Txt(56, 346, 300, 16, "ENVIRONMENTS", 9.5, cMuted, FONT_HEAD)
+    Anim l, msoAnimEffectFade, 1, 0.4
+    envs = Array("Dev", "Test", "Prod")
+    envBodies = Array("[url]" & DOT & "latest main" & DOT & "mocked data", _
+                      "[url]" & DOT & "release candidate, UAT" & DOT & "test data", _
+                      "[url]" & DOT & "live" & DOT & "real users")
+    For i = 0 To 2
+        Set k = Card(xs(i), 366, 272, 86, cWhite, cSkyStrong, envs(i), envBodies(i), cNavy, cMuted, 15, 11)
+        Anim k, msoAnimEffectAscend, 1.1 + i * 0.12, 0.5
+    Next i
+End Sub
+
+Private Sub S11_Production()
+    Dim k As Shape, i As Integer, heads, bodies, fills, headCs
+    NewSlide 11, "Once you're live, you can see your module's dashboards and errors by filtering on the module tag. " & _
+                 "You're on call for your module; we're on call for the platform."
+    Header "Running in production", "Monitoring, incidents and analytics"
+
+    heads = Array("Monitoring", "Incidents", "Analytics")
+    bodies = Array("Dashboards: [link]" & vbCr & "Error tracking: [link]" & vbCr & "Filter by the module tag to see only your module", _
+                   "We're on call for the shell and pipeline" & vbCr & "You're on call for your module" & vbCr & "Severity levels and process: [link]", _
+                   "Event names follow [convention]" & vbCr & "Use the shared analytics client" & vbCr & "Don't add your own tracking scripts")
+    fills = Array(cSky, cPink, cYellow)
+    headCs = Array(cNavy, cPinkFg, cNavy)
+    For i = 0 To 2
+        Set k = Card(56 + i * 288, 140, 272, 290, fills(i), -1, heads(i), bodies(i), headCs(i), cFg, 22, 13.5, True)
+        Anim k, msoAnimEffectFadedZoom, 0.3 + i * 0.18, 0.55
+    Next i
+End Sub
+
+Private Sub S12_Help()
+    Dim k As Shape, r As Shape, i As Integer, labels, values
+    NewSlide 12, "Ask in #platform-help for anything. Office hours are good for bigger questions. These links cover changes, decisions and deprecations."
+    Header "Getting help", "We're here to help"
+
+    Set k = Card(56, 136, 380, 310, cNavy, -1, "#platform-help", _
+                 "Ask anything. We reply within [1 working day]." & vbCr & "Office hours: [day, time, link]" & vbCr & _
+                 "Contacts: [team lead], [release manager]", cWhite, cOnNavy, 28, 14, True)
+    k.TextFrame.MarginLeft = 28: k.TextFrame.MarginTop = 28
+    Lift k
+    Anim k, msoAnimEffectFadedZoom, 0.3, 0.6
+
+    labels = Array("Request a platform change", "Decisions: ADRs and RFCs", "Deprecations and migration deadlines", "Release notes", "Design system")
+    values = Array("[intake board]", "[link]", "[link]", "#releases", "[link]")
+    For i = 0 To 4
+        Set r = Box(460, 136 + i * 64, 444, 54, cWhite, 0.2, cSkyStrong)
+        BoxText r, labels(i) & vbCr & values(i), 11.5, cMuted, FONT_BODY, ppAlignLeft, msoAnchorMiddle
+        r.TextFrame.MarginLeft = 18
+        StylePara r, 1, 13.5, cNavy, FONT_HEAD
+        Anim r, msoAnimEffectAscend, 0.5 + i * 0.12, 0.5
+    Next i
+End Sub
+
+Private Sub S13_FirstWeek()
+    Dim b As Shape, t As Shape, ck As Shape, k As Shape, i As Integer, y As Single, items
+    Dim checks(0 To 6) As Shape
+    NewSlide 13, "Here's your first-week checklist. Copy it into your planning tool so the whole team can track it."
+    Header "Your first week", "Seven things to do in week one"
+
+    items = Array("Get repo, CI and environment access", "Join #platform-help and #releases", "Add your team to the ownership list", _
+                  "Run the app locally with your module", "Read the module contract", "Ship a small PR to dev", "Watch one release go out")
+    For i = 0 To 6
+        y = 136 + i * 44
+        Set b = Box(56, y, 24, 24, cWhite, 0.25, cSkyStrong)
+        Set t = Txt(94, y + 1, 500, 24, items(i), 15, cFg)
+        Anim b, msoAnimEffectAscend, 0.3 + i * 0.08, 0.45
+        Anim t, msoAnimEffectAscend, 0.3 + i * 0.08, 0.45
+        Set ck = Box(56, y, 24, 24, cNavy, 0.25)
+        BoxText ck, ChrW(&H2713), 12, cWhite, "Segoe UI Symbol", ppAlignCenter, msoAnchorMiddle
+        ck.TextFrame.MarginLeft = 0: ck.TextFrame.MarginRight = 0: ck.TextFrame.MarginTop = 0: ck.TextFrame.MarginBottom = 0
+        Set checks(i) = ck
+    Next i
+
+    Set k = Card(640, 136, 264, 288, cYellow, -1, "Make it a team task", _
+                 "Copy this list into Planner or Jira so the whole team can track it." & vbCr & _
+                 "Something confusing? Tell us in #platform-help and we'll improve the docs.", cNavy, cFg, 18, 13.5, True)
+    Lift k
+    Anim k, msoAnimEffectFadedZoom, 0.6, 0.6
+
+    ' Ticks pop in one after another once the list is on screen.
+    For i = 0 To 6
+        Anim checks(i), msoAnimEffectFadedZoom, 1.4 + i * 0.22, 0.3
+    Next i
+End Sub
+
+Private Sub S14_Close()
+    Dim p As Shape, t As Shape, s As Shape, l As Shape, g As Shape
+    NewSlide 14, "That's it. Welcome aboard. Questions now, or any time in #platform-help."
+
+    Set p = Pill(56, 150, "That's everything", cPink, cPinkFg, 9, True)
+    Set t = Txt(56, 182, 520, 80, "Welcome aboard.", 54, cNavy, FONT_BLACK)
+    Anim p, msoAnimEffectFade, 0, 0.5
+    Anim t, msoAnimEffectAscend, 0.15, 0.8
+    HighlightPara t, 1, 0.8
+
+    Set s = Txt(56, 276, 480, 30, "Questions? Ask in #platform-help", 20, cFg, FONT_HEAD)
+    Set l = Txt(56, 314, 460, 50, "Everything from today is on the onboarding page: [link]", 14, cMuted)
+    Anim s, msoAnimEffectAscend, 1.1, 0.5
+    Anim l, msoAnimEffectFade, 1.3, 0.5
+
+    AppWindow 590, 160, 300, 210, False, 0.4, True
+    Set g = Pill(0, 0, "Your module plugs in here", cNavy, cWhite, 10)
+    g.Left = 590 + 300 - g.Width + 20
+    g.Top = 160 + 210 - g.Height / 2
+    g.Name = "!!tag"
+    Lift g
+    Anim g, msoAnimEffectFadedZoom, 1.6, 0.5
+End Sub
