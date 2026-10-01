@@ -1,0 +1,221 @@
+Draft for SharePoint. Yellow tags name the web part to use for each block. Grey chips are placeholders to fill in.
+
+Hero web part · layout: single tile · use the graphic on the right as the banner image Onboarding · for module teams
+
+# Build your module. We'll get it to production.
+
+Welcome to \[App name\]. You own a module; we own the platform it runs on: the app shell, shared libraries and the release pipeline. This page covers everything you need to build, test and ship safely.
+
+[Start your first week](#checklist) [See the release calendar](#release)
+
+Teams on the app
+
+\[N\]
+
+Modules
+
+\[N\]
+
+Next release
+
+\[date\]
+
+Quick links web part · layout: tiles
+
+[**Release calendar**Cut-offs and next release](#release) [**Who owns what**Modules, routes, contacts](#ownership) [**Run it locally**Setup in under an hour](#setup) [**Get help**Channel and office hours](#help) [**First week**Your checklist](#checklist)
+
+Section: two-thirds left · Text + Image web parts
+
+## Start here
+
+\[App name\] is used by \[who\] to \[purpose\], with around \[N\] daily users. Several teams build on it, and each team owns its own modules.
+
+### How the app fits together
+
+Replace with your real diagram. Export it as an image and use an Image web part.
+
+### The platform team owns
+
+- App shell and routing
+- Shared libraries and the design system
+- CI/CD and the release pipeline
+- Platform-wide quality gates
+
+### Your team owns
+
+- Your module's code and tests
+- Bugs and incidents in your module
+- Your feature flags and their cleanup
+- Your module's dependencies
+
+Section: full width · List web part (linked to a SharePoint list)
+
+## Who owns what
+
+Keep this in a SharePoint list, not a hard-coded table, so teams can update their own rows. Code owners are enforced in the \[CODEOWNERS path\] file.
+
+| Module / route | Team | Contact | Channel |
+| --- | --- | --- | --- |
+| App shell, / | Platform | \[name\] | #platform-help |
+| \[module\], /route | \[team\] | \[name\] | #channel |
+| \[module\], /route | \[team\] | \[name\] | #channel |
+
+New module or route? Raise a request at \[intake link\]. The platform team approves it.
+
+Section: two-thirds left · Text + Code snippet web parts
+
+## Getting set up
+
+Full instructions are in the repo README. This is the short version.
+
+- Request repo access: \[access link\]
+- Install Node \[version\] and \[pnpm/npm/yarn\]
+- Run only your module against the shared shell: \[command\]
+- Mock APIs, test accounts and seed data: \[link\]
+- Walkthrough of your first PR: \[link\]
+
+### Docs live in the repo
+
+Anything that changes with the code, like the module contract, setup and CI rules, lives as Markdown in the repo. This page links to it so the two never go out of sync.
+
+Section: full width · Collapsible section (expand/collapse)
+
+## Building a module
+
+The rules that let many teams share one app without breaking each other's work.
+
+Module boundaries
+
+- Don't write to global state, add global CSS, or patch the shell.
+- Talk to the shell and other modules through \[events / shared store / router API\] only.
+- Get auth and user context from the shell. Don't call the identity provider yourself.
+
+Design system and shared components
+
+- Use the design system first: \[link\].
+- If you need a new component, propose it in \[channel\] before building your own.
+
+Dependencies and bundle size
+
+- Use libraries from the approved list. Shared libraries must use the versions pinned by the platform.
+- Bundle budget per module: \[N\] KB gzipped. CI fails the build if you exceed it.
+
+Feature flags
+
+- Name flags \[team\]-\[feature\] and create them in \[tool\].
+- Your team removes the flag within \[N\] sprints of a full rollout.
+
+Quality gates: what CI checks
+
+| Check | Effect |
+| --- | --- |
+| Lint and type-check | Blocks merge |
+| Unit tests, \[N\]% coverage on changed code | Blocks merge |
+| E2E smoke tests | Blocks merge |
+| Accessibility (WCAG 2.2 AA) | \[Blocks / warns\] |
+| Bundle size budget | Blocks merge |
+| Core Web Vitals budget | Warns |
+
+Section: two-thirds left · Text + Events web part (right)
+
+## Releases
+
+We release \[every N weeks / on day X\]. Code cut-off is \[day, time\]. Release notes are posted in #releases.
+
+**Merge to main**All gates green
+
+**Dev**Deployed automatically on merge
+
+**Test / UAT**Release candidate cut at the code cut-off
+
+**Production**Released by the platform team
+
+Getting your change into a release
+
+- Changes merged before the cut-off go into the next release. Check \[release dashboard\] to see if yours is included.
+- Ship unfinished work behind a feature flag. Don't hold back a merge to wait for a release.
+
+Hotfixes
+
+- Only for \[Sev 1–2\] issues. Ask in #platform-help and tag \[@release-manager\].
+- A platform engineer and your tech lead must both approve.
+
+Rollback
+
+- The platform team can roll back \[the whole app / a single module\] in about \[N\] minutes.
+- The fastest fix is usually to turn the feature flag off, and your team can do that yourselves.
+
+Environments
+
+| Env | URL | Purpose | Data |
+| --- | --- | --- | --- |
+| Dev | \[url\] | Latest main | Mocked |
+| Test | \[url\] | Release candidate, UAT | Test data |
+| Prod | \[url\] | Live | Real users |
+
+Events web part
+
+### Upcoming releases
+
+- \[date\]: cut-off
+- \[date\]: release \[version\]
+- \[date\]: code freeze
+
+Section: three columns · Text web parts
+
+## Running in production
+
+### Monitoring
+
+Dashboards: \[link\]. Error tracking: \[link\]. Filter by the module tag to see only your module.
+
+### Incidents
+
+The platform team is on call for the shell and pipeline. Your team is on call for your module. Severity levels and the process are at \[link\].
+
+### Analytics
+
+Event naming follows \[convention\]. Use the shared analytics client. Don't add your own tracking scripts.
+
+Section: two-thirds left · Text + People web part (right)
+
+## Working with the platform team
+
+- **Questions:** #platform-help. We reply within \[1 working day\].
+- **Office hours:** \[day, time, link\]
+- **Request a platform change:** \[intake board\]
+- **Decisions (ADRs and RFCs):** \[link\]
+- **Upcoming deprecations and migration deadlines:** \[link\]
+
+People web part
+
+### Platform team contacts
+
+- \[Name\]: team lead
+- \[Name\]: release manager
+- \[Name\]: design system
+
+Section: two-thirds left · Text web part (checklist) + Quick links (right)
+
+## Your first week
+
+On SharePoint this is a plain list. Teams can copy it into Planner to track their progress.
+
+- [ ] Get repo, CI and environment access
+- [ ] Join #platform-help and #releases
+- [ ] Add your team to the ownership list
+- [ ] Run the app locally with your module
+- [ ] Read the module contract
+- [ ] Ship a small PR to dev
+- [ ] Watch one release go out
+
+0 of 7 done
+
+### Reference
+
+- \[Glossary\]
+- \[FAQ\]
+- \[Repos\]
+- \[Boards and dashboards\]
+
+Page owner: \[name\] Last reviewed: \[date\] New here and something was confusing? Tell us in #platform-help and we'll add it to this page.
